@@ -1,0 +1,54 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Resume Mailer</title>
+<style>
+:root{font-family:system-ui,sans-serif;color:#e8edf7;background:#0c1220;color-scheme:dark}*{box-sizing:border-box}body{margin:0}main{max-width:1100px;margin:auto;padding:38px 24px}h1{margin:4px 0;font-size:32px;letter-spacing:-1px}p{color:#aab8d0;line-height:1.6}.tag{color:#6ce3bc;font-size:12px;letter-spacing:2px;text-transform:uppercase}.grid{display:grid;grid-template-columns:1fr 1.3fr;gap:22px;margin-top:26px}.card{background:#141e30;border:1px solid #29354b;border-radius:16px;padding:24px}h2{font-size:18px;margin:0 0 20px}label{display:block;font-size:13px;color:#bcc9dd;margin:16px 0 7px}input,textarea,select{width:100%;padding:11px 12px;background:#0d1626;border:1px solid #34415a;border-radius:8px;color:#edf3ff;font:inherit;font-size:14px}input:focus,textarea:focus,select:focus{outline:2px solid #61cfb1}textarea{resize:vertical}.row{display:flex;gap:12px}.row>*{flex:1;min-width:0}.hint{font-size:12px;margin:8px 0}.actions{display:flex;gap:10px;margin-top:24px;align-items:center;flex-wrap:wrap}button{border:0;border-radius:8px;padding:12px 18px;font-weight:700;cursor:pointer;background:#69dfbc;color:#07251e}button.secondary{background:#2a3952;color:#e5efff}button:disabled{opacity:.45;cursor:default}#notice{color:#ffcf91;white-space:pre-wrap}#queue{margin-top:22px}.item{display:grid;grid-template-columns:1fr auto;gap:8px;padding:13px 0;border-bottom:1px solid #29354b;overflow-wrap:anywhere}.item small{grid-column:1/-1;color:#aab8d0}.Sent{color:#6ce3bc}.Failed{color:#ff9c9c}#summary{color:#b7c8df}dialog{max-width:620px;width:90%;background:#141e30;color:#e8edf7;border:1px solid #40516b;border-radius:16px;padding:26px}dialog::backdrop{background:#000a}pre{white-space:pre-wrap;font:inherit;font-size:14px;line-height:1.6;overflow-wrap:anywhere}@media(max-width:760px){.grid{grid-template-columns:1fr}main{padding:24px 16px}}
+</style>
+</head>
+<body><main>
+<span class="tag">Local email workspace</span><h1>Resume Mailer</h1>
+<p>Send your message and resume to each recipient individually.</p>
+<form id="form"><div class="grid">
+<section class="card"><h2>1. Connect your email</h2>
+<label for="preset">Provider</label><select id="preset"><option value="gmail">Gmail</option><option value="custom">Custom SMTP</option></select>
+<label for="sender">Your email address</label><input id="sender" type="email" required placeholder="you@gmail.com">
+<label for="name">Sender name</label><input id="name" placeholder="Your name">
+<label for="username">SMTP username</label><input id="username" required autocomplete="username" placeholder="Usually your email address">
+<label for="password">App password / SMTP password</label><input id="password" type="password" required autocomplete="off">
+<p class="hint">For Gmail, enable 2-Step Verification and create an App Password in your Google account. Credentials stay in this app’s memory and are sent only to your SMTP server.</p>
+<label for="host">SMTP host</label><input id="host" value="smtp.gmail.com" required>
+<div class="row"><div><label for="port">Port</label><input id="port" type="number" value="587" min="1" max="65535" required></div><div><label for="security">Encryption</label><select id="security"><option value="starttls">STARTTLS</option><option value="ssl">SSL/TLS</option></select></div></div>
+<label for="delay">Delay between emails (seconds)</label><input id="delay" type="number" min="1" max="3600" value="10" required>
+</section>
+<section class="card"><h2>2. Compose your email</h2>
+<label for="recipients">Recipients <span id="count"></span></label><textarea id="recipients" rows="5" required placeholder="recruiter@company.com&#10;hiring@another.com"></textarea>
+<p class="hint">Separate addresses with new lines, commas, spaces, or semicolons. Duplicate addresses are removed. No shared To or CC list.</p>
+<label for="subject">Subject</label><input id="subject" required placeholder="Application for Software Engineering Internship">
+<label for="message">Message</label><textarea id="message" rows="10" required placeholder="Hello,&#10;&#10;I am writing to apply for…&#10;&#10;Please find my resume attached.&#10;&#10;Regards,&#10;Your name"></textarea>
+<label for="resume">Resume attachment</label><input id="resume" type="file" accept=".pdf,.doc,.docx" required><p class="hint">PDF recommended · Maximum 10 MB</p>
+<div class="actions"><button id="review" type="submit">Review & send</button><button id="stop" class="secondary" type="button" disabled>Stop queue</button></div>
+<p class="hint">Stopping finishes any email already in progress. Keep the Python window open while sending.</p>
+</section></div></form>
+<p id="notice" role="alert"></p>
+<section class="card" style="margin-top:22px"><h2>Recently emailed · 30-day protection</h2><p class="hint">Recipients listed here are automatically skipped, even after restarting the app. Records expire after 30 days, allowing you to contact them again. Earlier emails sent before this feature are not included.</p><p id="historyError" role="alert"></p><div id="historyItems"></div></section>
+<section class="card" id="queue" hidden><h2>Send progress</h2><p id="summary" aria-live="polite"></p><div id="items"></div></section>
+<dialog id="preview"><h2>Review before sending</h2><p id="previewMeta"></p><pre id="previewBody"></pre><p class="hint">Each recipient will receive this same message and attachment.</p><div class="actions"><button id="confirm">Send emails</button><button id="cancel" class="secondary">Go back</button></div></dialog>
+</main><script>
+const $=id=>document.getElementById(id), token='__TOKEN__';let pending=null,running=false;
+const addresses=()=>[...new Set($('recipients').value.split(/[,;\s]+/).map(x=>x.trim()).filter(Boolean))];
+$('recipients').oninput=()=>{$('count').textContent=`· ${addresses().length} unique`};
+$('sender').onchange=()=>{if(!$('username').value)$('username').value=$('sender').value};
+$('preset').onchange=()=>{if($('preset').value==='gmail'){$('host').value='smtp.gmail.com';$('port').value=587;$('security').value='starttls'}};
+$('security').onchange=()=>{$('port').value=$('security').value==='ssl'?465:587};
+async function api(path,data){const response=await fetch('/api/'+path,{method:data?'POST':'GET',headers:{'X-App-Token':token,'Content-Type':'application/json'},body:data?JSON.stringify(data):undefined});const result=await response.json();if(!response.ok)throw Error(result.error||'Request failed');return result}
+$('form').onsubmit=async event=>{event.preventDefault();$('notice').textContent='';try{const file=$('resume').files[0];if(file.size>10*1024*1024)throw Error('Resume must be 10 MB or smaller.');const attachment=await new Promise((resolve,reject)=>{const reader=new FileReader();reader.onload=()=>resolve(reader.result.split(',')[1]);reader.onerror=()=>reject(Error('Could not read the resume.'));reader.readAsDataURL(file)});pending={};for(const id of ['sender','name','username','password','host','port','security','delay','recipients','subject','message'])pending[id]=$(id).value;Object.assign(pending,{attachment,filename:file.name});$('previewMeta').textContent=`From: ${pending.sender}\nTo: ${addresses().length} recipients\nResume: ${file.name}\nSubject: ${pending.subject}`;$('previewMeta').style.whiteSpace='pre-wrap';$('previewBody').textContent=pending.message;$('preview').showModal()}catch(e){$('notice').textContent=e.message}};
+$('cancel').onclick=()=>{pending=null;$('preview').close()};
+$('preview').addEventListener('cancel',()=>{pending=null});
+$('confirm').onclick=async()=>{$('confirm').disabled=true;try{await api('send',pending);pending=null;$('password').value='';$('preview').close();await refresh()}catch(e){$('preview').close();$('notice').textContent=e.message}finally{$('confirm').disabled=false}};
+$('stop').onclick=async()=>{try{await api('stop',{});$('notice').textContent='Stop requested. Any email already in progress will finish.'}catch(e){$('notice').textContent=e.message}};
+async function refresh(){try{const state=await api('status');running=state.running;if(state.error)$('notice').textContent=state.error;$('review').disabled=running;$('stop').disabled=!running;$('queue').hidden=!state.items.length;const tally=status=>state.items.filter(x=>x.status===status).length;$('summary').textContent=`${running?'Sending':'Queue idle'} · ${tally('Sent')} sent · ${tally('Failed')} failed · ${tally('Skipped')} skipped · ${tally('Queued')} queued · ${tally('Stopped')} stopped`;$('items').replaceChildren(...state.items.map(item=>{const div=document.createElement('div');div.className='item';const email=document.createElement('span');email.textContent=item.email;const status=document.createElement('span');status.textContent=item.status;status.className=item.status;div.append(email,status);if(item.detail){const detail=document.createElement('small');detail.textContent=item.detail;div.append(detail)}return div}))}catch(e){$('notice').textContent='Cannot reach the local app. Keep the Python window running.'}}
+async function refreshHistory(){try{const result=await api('history');$('historyError').textContent='';$('historyItems').replaceChildren(...result.items.map(item=>{const row=document.createElement('div');row.className='item';const email=document.createElement('span');email.textContent=item.email;const dates=document.createElement('small');dates.textContent=`Sent: ${new Date(item.sent_at*1000).toLocaleString()} · Eligible again: ${new Date(item.eligible_at*1000).toLocaleString()}`;row.append(email,dates);return row}));if(!result.items.length)$('historyItems').textContent='No recipients in the last 30 days.'}catch(e){$('historyError').textContent=e.message}}
+setInterval(refresh,1500);setInterval(refreshHistory,5000);refresh();refreshHistory();window.addEventListener('beforeunload',event=>{if(running){event.preventDefault();event.returnValue=''}});
+</script></body></html>
