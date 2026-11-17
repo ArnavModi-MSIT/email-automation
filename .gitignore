@@ -3,3 +3,5 @@ __pycache__/
 *.log
 *.sqlite3
 *.sqlite3-*
+*.sqlite3.tmp
+.qa/
